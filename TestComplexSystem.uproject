@@ -1,0 +1,16 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{A528D181-4CAF-61F5-A481-FBA5F002FF10}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "TestComplexSystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine"
+			]
+		}
+	]
+}
