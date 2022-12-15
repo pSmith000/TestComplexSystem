@@ -18,6 +18,10 @@ class ATestComplexSystemCharacter : public ACharacter
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	class UCameraComponent* FollowCamera;
+
+private:
+	FTimerHandle TimerHandle;
+	float _delayTimer;
 public:
 	ATestComplexSystemCharacter();
 
@@ -29,7 +33,12 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Parkour)
 	bool isSprinting;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool isSliding;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool isClimbing;
 	
 
 protected:
@@ -83,5 +92,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 		void StartSlide();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void StopSlide();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void CheckForClimbing();
 };
 

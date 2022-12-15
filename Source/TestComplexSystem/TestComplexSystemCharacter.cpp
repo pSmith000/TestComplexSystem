@@ -8,6 +8,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "DrawDebugHelpers.h"
+#include "Kismet/KismetMathLibrary.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ATestComplexSystemCharacter
@@ -86,10 +88,15 @@ void ATestComplexSystemCharacter::SetMoveSpeed(float speed)
 
 void ATestComplexSystemCharacter::StartCrouch()
 {
-	if (GetCharacterMovement()->Velocity.Size() >= 400.0f && !GetCharacterMovement()->IsFalling())
+	if (isSliding || GetCharacterMovement()->IsFalling())
+		return;
+
+	/*if (GetCharacterMovement()->Velocity.Size() >= 400.0f && !GetCharacterMovement()->IsFalling())
 		StartSlide();
 	else
-		Crouch();
+		Crouch();*/
+
+	Crouch();
 }
 
 void ATestComplexSystemCharacter::StopCrouch()
@@ -99,14 +106,70 @@ void ATestComplexSystemCharacter::StopCrouch()
 
 void ATestComplexSystemCharacter::StartSlide()
 {
+	if (isSliding)
+		return;
+	isSliding = true;
 	GetCapsuleComponent()->SetCapsuleHalfHeight(48.0f);
 	FVector meshLocation = GetMesh()->GetComponentTransform().GetLocation();
-	meshLocation.Z += 38.0f;
+	meshLocation.Z += 50.0f;
 
 	GetMesh()->SetWorldLocation(meshLocation);
 
+}
+
+void ATestComplexSystemCharacter::StopSlide()
+{
+	isSliding = false;
+	GetCapsuleComponent()->SetCapsuleHalfHeight(96.0f);
+	FVector meshLocation = GetMesh()->GetComponentTransform().GetLocation();
+	meshLocation.Z -= 50.0f;
+
+	GetMesh()->SetWorldLocation(meshLocation);
+}
+
+void ATestComplexSystemCharacter::CheckForClimbing()
+{
+	FHitResult out;
+	FCollisionObjectQueryParams TraceParams;
+
+	FVector actorLocation = GetActorLocation();
+	FVector actorForward = GetActorForwardVector();
+
+	actorLocation.Z -= 44.0f;
+	actorForward *= 70.0f;
+
+	FVector startLocation = actorLocation;
+	FVector endLocation = actorLocation + actorForward;
+
+	//GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
+
+	bool hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
+
 	
 
+	if (!hasHit)
+		return;
+
+	FVector wallLocation = out.Location;
+	FVector wallNormal = out.Normal;
+
+	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
+
+	FRotator rotator = UKismetMathLibrary::MakeRotFromX(wallNormal);
+	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+
+	wallForward *= -10.0f;
+	startLocation = (wallForward + wallLocation);
+	startLocation.Z += 200.0f;
+	endLocation = startLocation;
+	endLocation.Z -= 200.0f;
+	
+	hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
+	
+	if (!hasHit)
+		return;
+	
+	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 }
 
 
