@@ -130,25 +130,24 @@ void ATestComplexSystemCharacter::StopSlide()
 void ATestComplexSystemCharacter::CheckForClimbing()
 {
 	FHitResult out;
-	FCollisionObjectQueryParams TraceParams;
+	FCollisionQueryParams TraceParams;
+	TraceParams.AddIgnoredActor(this);
 
-	FVector actorLocation = GetActorLocation();
+	FVector actorLocation = GetActorLocation(); 
 	FVector actorForward = GetActorForwardVector();
 
-	actorLocation.Z -= 44.0f;
-	actorForward *= 70.0f;
+	actorLocation.Z -= 44.0f; 
+	actorForward = actorForward * 70.0f;
 
-	FVector startLocation = actorLocation;
-	FVector endLocation = actorLocation + actorForward;
+	FVector startLocation = actorLocation; 
+	FVector endLocation = actorLocation + actorForward; 
 
-	//GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
-
-	bool hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
-
-	
+	bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 
 	if (!hasHit)
 		return;
+
+	GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Blue, out.GetActor()->GetName());
 
 	FVector wallLocation = out.Location;
 	FVector wallNormal = out.Normal;
@@ -164,7 +163,9 @@ void ATestComplexSystemCharacter::CheckForClimbing()
 	endLocation = startLocation;
 	endLocation.Z -= 200.0f;
 	
-	hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
+	//hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
+
+	GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
 	
 	if (!hasHit)
 		return;
