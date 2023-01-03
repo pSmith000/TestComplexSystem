@@ -10,6 +10,7 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
+#include <Kismet/KismetSystemLibrary.h>
 
 //////////////////////////////////////////////////////////////////////////
 // ATestComplexSystemCharacter
@@ -127,7 +128,7 @@ void ATestComplexSystemCharacter::StopSlide()
 	GetMesh()->SetWorldLocation(meshLocation);
 }
 
-void ATestComplexSystemCharacter::CheckForClimbing()
+bool ATestComplexSystemCharacter::CheckForClimbing()
 {
 	FHitResult out;
 	FCollisionQueryParams TraceParams;
@@ -145,32 +146,92 @@ void ATestComplexSystemCharacter::CheckForClimbing()
 	bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 
 	if (!hasHit)
-		return;
+		return false;
 
-	GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Blue, out.GetActor()->GetName());
+	//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Blue, out.GetActor()->GetName());
 
-	FVector wallLocation = out.Location;
-	FVector wallNormal = out.Normal;
+	_wallLocation = out.Location;
+	_wallNormal = out.Normal;
 
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
-	FRotator rotator = UKismetMathLibrary::MakeRotFromX(wallNormal);
+	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
 	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
 
 	wallForward *= -10.0f;
-	startLocation = (wallForward + wallLocation);
+	startLocation = (wallForward + _wallLocation);
 	startLocation.Z += 200.0f;
 	endLocation = startLocation;
 	endLocation.Z -= 200.0f;
 	
-	//hasHit = GetWorld()->LineTraceSingleByObjectType(out, startLocation, endLocation, TraceParams);
-
-	GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
+	hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 	
 	if (!hasHit)
-		return;
+		return false;
+
+	//GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
 	
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
+
+	_wallHeight = out.Location;
+
+	_shouldPlayerClimb = _wallHeight.Z - _wallLocation.Z > 60.0f;
+
+	rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
+	wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+
+	wallForward *= -50.0f;
+	startLocation = (wallForward + _wallLocation);
+	startLocation.Z += 250.0f;
+	endLocation = startLocation;
+	endLocation.Z -= 300.0f;
+
+	hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
+
+	if (!hasHit)
+		_isWallThick = false;
+
+	//GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
+
+	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
+
+	_otherWallHeight = out.Location;
+
+	_isWallThick = !(_wallHeight.Z - _otherWallHeight.Z > 30.0f);
+
+	return true;
+}
+
+void ATestComplexSystemCharacter::StartVaultOrGetUp()
+{
+	isClimbing = true;
+
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
+
+	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
+	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+	wallForward *= -50.0f;
+	FVector actorNewLocation = wallForward + GetActorLocation();
+	actorNewLocation.Z += 50.0f;
+
+	
+
+	if (_isWallThick)
+		SetActorLocation(actorNewLocation);
+	else 
+	{
+		SetActorLocation(actorNewLocation);
+		//UKismetMathLibrary::VInterpTo_Constant(GetActorLocation(), actorNewLocation, GetWorld()->GetDeltaSeconds(), 1.0f);
+	}
+}
+
+void ATestComplexSystemCharacter::StopVaultOrGetUp()
+{
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
+
+	isClimbing = false;
 }
 
 

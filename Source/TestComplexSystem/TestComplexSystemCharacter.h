@@ -39,6 +39,18 @@ public:
 	bool isSliding;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool isClimbing;
+
+public:
+	//Variables used for checking for climbing
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool _shouldPlayerClimb;
+private:
+	bool _isWallThick;
+	bool _canClimb;
+	FVector _wallLocation;
+	FVector _wallNormal;
+	FVector _wallHeight;
+	FVector _otherWallHeight;
 	
 
 protected:
@@ -97,6 +109,12 @@ public:
 		void StopSlide();
 
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
-		void CheckForClimbing();
+		bool CheckForClimbing();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void StartVaultOrGetUp();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void StopVaultOrGetUp();
 };
 
