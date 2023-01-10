@@ -11,6 +11,7 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetMathLibrary.h"
 #include <Kismet/KismetSystemLibrary.h>
+#include "Kismet/GameplayStatics.h"
 
 //////////////////////////////////////////////////////////////////////////
 // ATestComplexSystemCharacter
@@ -50,6 +51,53 @@ ATestComplexSystemCharacter::ATestComplexSystemCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
 
+void ATestComplexSystemCharacter::Tick(float deltaTime)
+{
+	FString deltaTimeString;
+	if (inAction)
+		deltaTimeString = "in action";
+	else
+		deltaTimeString = "not currently in action";
+	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, deltaTimeString);
+
+	if (GetCharacterMovement()->IsFalling())
+		CheckForWallRunning();
+
+	if (GetCharacterMovement()->Velocity.Size() <= 100.0f && _isWallRunning)
+	{
+		_isWallRunning = false;
+		_isJumpingOffWall = true;
+		inAction = false;
+		_rightSide = false;
+		GetCharacterMovement()->GravityScale = 1.0f;
+		GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
+
+		GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, 1.5f, false);
+	}
+
+
+	/*if (!inAction)
+	{
+		_startPosition = GetActorLocation();
+		_direction = _endPosition - _startPosition;
+		_totalDistance = _direction.Size();
+		_direction = _direction.GetSafeNormal();
+	}
+	
+	if (inAction) {
+		if (_currentDistance < _totalDistance)
+		{
+			FVector newPosition = _startPosition;
+			newPosition += _direction * deltaTime * 150.0f;
+			SetActorLocation(newPosition);
+			_currentDistance = (newPosition - _startPosition).Size();
+		}
+	}*/
+
+	
+
+}
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -57,7 +105,7 @@ void ATestComplexSystemCharacter::SetupPlayerInputComponent(class UInputComponen
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ATestComplexSystemCharacter::CheckJump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &ATestComplexSystemCharacter::StartCrouch);
@@ -107,6 +155,9 @@ void ATestComplexSystemCharacter::StopCrouch()
 
 void ATestComplexSystemCharacter::StartSlide()
 {
+	if (inAction)
+		return;
+	inAction = true;
 	if (isSliding)
 		return;
 	isSliding = true;
@@ -120,6 +171,7 @@ void ATestComplexSystemCharacter::StartSlide()
 
 void ATestComplexSystemCharacter::StopSlide()
 {
+	inAction = false;
 	isSliding = false;
 	GetCapsuleComponent()->SetCapsuleHalfHeight(96.0f);
 	FVector meshLocation = GetMesh()->GetComponentTransform().GetLocation();
@@ -204,36 +256,188 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 
 void ATestComplexSystemCharacter::StartVaultOrGetUp()
 {
+	if (inAction)
+		return;
+	inAction = true;
+
 	isClimbing = true;
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
-
-	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
-	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
-	wallForward *= -50.0f;
-	FVector actorNewLocation = wallForward + GetActorLocation();
-	actorNewLocation.Z += 50.0f;
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 
 	
-
-	if (_isWallThick)
-		SetActorLocation(actorNewLocation);
-	else 
-	{
-		SetActorLocation(actorNewLocation);
-		//UKismetMathLibrary::VInterpTo_Constant(GetActorLocation(), actorNewLocation, GetWorld()->GetDeltaSeconds(), 1.0f);
-	}
 }
 
 void ATestComplexSystemCharacter::StopVaultOrGetUp()
 {
+	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
+	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+	wallForward *= -50.0f;
+	FVector actorNewLocation = wallForward + GetActorLocation();
+
+
+
+
+	if (_isWallThick)
+	{
+		actorNewLocation.Z += 50.0f;
+		SetActorLocation(actorNewLocation);
+	}
+
+	else
+	{
+		actorNewLocation += GetActorForwardVector() * 50.0f;
+		SetActorLocation(actorNewLocation);
+
+	}
+
+	_startPosition = GetActorLocation();
+	_endPosition = actorNewLocation;
+	
+
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
+	inAction = false;
 	isClimbing = false;
 }
 
+void ATestComplexSystemCharacter::CheckForWallRunning()
+{
+	if (!_leftSide)
+	{
+		FHitResult out;
+		FCollisionQueryParams TraceParams;
+
+		FVector startLocation = GetActorLocation();
+		FVector endLocation = (GetActorRightVector() * 50.0f) + startLocation;
+
+		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
+		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
+
+		
+
+		if (hasHit)
+		{
+			if (out.GetActor()->ActorHasTag("NoWallrun"))
+				return;
+
+			_rightSide = true;
+			_onRightSide = true;
+
+			if (!_isJumpingOffWall)
+			{
+				inAction = true;
+				FRotator newRotation = UKismetMathLibrary::MakeRotFromX(out.Normal);
+				newRotation.Yaw += 90.0f;
+				newRotation.Roll = 0.0f;
+				newRotation.Pitch = 0.0f;
+				SetActorRotation(newRotation);
+
+				FVector actorForward = GetActorForwardVector();
+				actorForward.X *= 500.0f;
+				actorForward.Y *= 500.0f;
+				actorForward.Z = 0.0f;
+
+				GetCharacterMovement()->GravityScale = 0.0f;
+				GetCharacterMovement()->Velocity = actorForward;
+				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
+
+				_isWallRunning = true;
+			}	
+		}
+
+		else
+		{
+			_isWallRunning = false;
+			inAction = false;
+			_rightSide = false;
+			GetCharacterMovement()->GravityScale = 1.0f;
+			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
+		}
+	}
+
+	if (!_rightSide)
+	{
+		FHitResult out;
+		FCollisionQueryParams TraceParams;
+		TraceParams.AddIgnoredActor(this);
+
+		FVector startLocation = GetActorLocation();
+		FVector endLocation = (GetActorRightVector() * -50.0f) + startLocation;
+
+		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
+		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
+
+
+		if (hasHit)
+		{
+			if (out.GetActor()->ActorHasTag("NoWallrun"))
+				return;
+
+			_leftSide = true;
+			_onRightSide = false;
+
+			if (!_isJumpingOffWall)
+			{
+				inAction = true;
+				FRotator newRotation = UKismetMathLibrary::MakeRotFromX(out.Normal);
+				newRotation.Yaw -= 90.0f;
+				newRotation.Roll = 0.0f;
+				newRotation.Pitch = 0.0f;
+				SetActorRotation(newRotation);
+
+				FVector actorForward = GetActorForwardVector();
+				actorForward.X *= 500.0f;
+				actorForward.Y *= 500.0f;
+				actorForward.Z = 0.0f;
+
+				GetCharacterMovement()->GravityScale = 0.0f;
+				GetCharacterMovement()->Velocity = actorForward;
+				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
+			
+				_isWallRunning = true;
+			}
+		}
+
+		else
+		{
+			_isWallRunning = false;
+			inAction = false;
+			_leftSide = false;
+			_rightSide = false;
+			GetCharacterMovement()->GravityScale = 1.0f;
+			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
+		}
+	}
+}
+
+void ATestComplexSystemCharacter::CheckJump()
+{
+	if (!(_rightSide || _leftSide))
+		Jump();
+	else
+	{
+		_isWallRunning = false;
+		_isJumpingOffWall = true;
+
+		FVector actorRightVector = GetActorRightVector();
+		FVector launchVelocity = UKismetMathLibrary::SelectVector(actorRightVector * -450.0f, actorRightVector * 450.0f, _onRightSide);
+
+		launchVelocity.Z = 450.0f;
+
+		LaunchCharacter(launchVelocity, false, false);
+
+		GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, .5f, false);
+	}
+}
+
+
+void ATestComplexSystemCharacter::TurnOffJumpOffWall()
+{
+	_isJumpingOffWall = false;
+	inAction = false;
+}
 
 void ATestComplexSystemCharacter::OnResetVR()
 {

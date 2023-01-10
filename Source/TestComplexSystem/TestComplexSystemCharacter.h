@@ -25,6 +25,8 @@ private:
 public:
 	ATestComplexSystemCharacter();
 
+	virtual void Tick(float deltaTime) override;
+
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseTurnRate;
@@ -39,11 +41,18 @@ public:
 	bool isSliding;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool isClimbing;
+	bool inAction;
 
 public:
 	//Variables used for checking for climbing
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool _shouldPlayerClimb;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool _isWallRunning;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool _leftSide;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool _rightSide;
 private:
 	bool _isWallThick;
 	bool _canClimb;
@@ -51,7 +60,21 @@ private:
 	FVector _wallNormal;
 	FVector _wallHeight;
 	FVector _otherWallHeight;
+
+	FVector _startPosition;
+	FVector _endPosition;
+	float _totalDistance;
+	float _currentDistance;
+	FVector _direction;
 	
+	
+	bool _onRightSide;
+	bool _isJumpingOffWall;
+	bool _isJumping;
+
+	UFUNCTION()
+	void TurnOffJumpOffWall();
+	FTimerHandle timerHandle;
 
 protected:
 
@@ -116,5 +139,11 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 		void StopVaultOrGetUp();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void CheckForWallRunning();
+
+	UFUNCTION(BlueprintCallable, Category = "Parkour")
+		void CheckJump();
 };
 
