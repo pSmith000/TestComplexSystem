@@ -54,31 +54,43 @@ ATestComplexSystemCharacter::ATestComplexSystemCharacter()
 void ATestComplexSystemCharacter::Tick(float deltaTime)
 {
 	FString deltaTimeString;
-	if (inAction)
-		deltaTimeString = "in action";
+	float ForwardVelocity = FVector::DotProduct(GetVelocity(), GetActorForwardVector());
+	if (ForwardVelocity <= 100.0f && _isWallRunning)
+		deltaTimeString = "True";
 	else
-		deltaTimeString = "not currently in action";
+		deltaTimeString = "RFalse";
 	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, deltaTimeString);
 
 	_currentFrameHeight = GetActorLocation().Z;
+
+	
 
 	if (GetCharacterMovement()->IsFalling())
 	{
 		CheckForWallRunning();
 	}
-		
-
-	if (GetCharacterMovement()->Velocity.Size() <= 100.0f && _isWallRunning)
+	else
 	{
 		_isWallRunning = false;
-		_isJumpingOffWall = true;
 		inAction = false;
 		_rightSide = false;
+		_leftSide = false;
 		GetCharacterMovement()->GravityScale = 1.0f;
 		GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
-
-		GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, 1.5f, false);
 	}
+		
+	if (ForwardVelocity <= 100.0f && _isWallRunning)
+	{
+		_isWallRunning = false;
+		inAction = false;
+		_rightSide = false;
+		_leftSide = false;
+		GetCharacterMovement()->GravityScale = 50.0f;
+		GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
+
+		//GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, 1.5f, false);
+	}
+	
 
 
 	/*if (!inAction)
@@ -346,7 +358,7 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 				actorForward.Y *= 500.0f;
 				actorForward.Z = 0.0f;
 
-				GetCharacterMovement()->GravityScale = 20.0f;
+				GetCharacterMovement()->GravityScale = 15.0f;
 				GetCharacterMovement()->Velocity = actorForward;
 				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
 				
@@ -377,6 +389,7 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+		
 
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
@@ -400,7 +413,7 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 				actorForward.Y *= 500.0f;
 				actorForward.Z = 0.0f;
 
-				GetCharacterMovement()->GravityScale = 20.0f;
+				GetCharacterMovement()->GravityScale = 15.0f;
 				GetCharacterMovement()->Velocity = actorForward;
 				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
 			
@@ -422,9 +435,9 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 
 void ATestComplexSystemCharacter::CheckJump()
 {
-	if (!(_rightSide || _leftSide))
+	if ((!(_rightSide || _leftSide)) && GetCharacterMovement()->IsMovingOnGround())
 		Jump();
-	else
+	else if (_isWallRunning)
 	{
 		_isWallRunning = false;
 		_isJumpingOffWall = true;
@@ -445,6 +458,8 @@ void ATestComplexSystemCharacter::TurnOffJumpOffWall()
 {
 	_isJumpingOffWall = false;
 	inAction = false;
+	GetCharacterMovement()->GravityScale = 1.0f;
+	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 }
 
 void ATestComplexSystemCharacter::OnResetVR()
