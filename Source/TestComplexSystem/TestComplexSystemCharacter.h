@@ -36,12 +36,14 @@ public:
 	float BaseLookUpRate;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Parkour)
-	bool isSprinting;
+	bool isSprinting = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
-	bool isSliding;
+	bool isSliding = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
-	bool isClimbing;
-	bool inAction;
+	bool isClimbing = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool isCrouching = false;
+	bool inAction = false;
 
 public:
 	//Variables used for checking for climbing
@@ -66,6 +68,8 @@ private:
 	float _totalDistance;
 	float _currentDistance;
 	FVector _direction;
+	float _lastFrameHeight;
+	float _currentFrameHeight;
 	
 	
 	bool _onRightSide;
