@@ -51,8 +51,13 @@ ATestComplexSystemCharacter::ATestComplexSystemCharacter()
 	// are set in the derived blueprint asset named MyCharacter (to avoid direct content references in C++)
 }
 
+/// <summary>
+/// Update for the character
+/// </summary>
+/// <param name="deltaTime"></param>
 void ATestComplexSystemCharacter::Tick(float deltaTime)
 {
+	//DEBUG
 	FString deltaTimeString;
 	float ForwardVelocity = FVector::DotProduct(GetVelocity(), GetActorForwardVector());
 	if (ForwardVelocity <= 100.0f && _isWallRunning)
@@ -60,57 +65,46 @@ void ATestComplexSystemCharacter::Tick(float deltaTime)
 	else
 		deltaTimeString = "RFalse";
 	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, deltaTimeString);
+	//DEBUG
 
+	//Sets the current height of the player for wall running
 	_currentFrameHeight = GetActorLocation().Z;
 
-	
-
+	//If the character is falling, check for wallrunning
 	if (GetCharacterMovement()->IsFalling())
 	{
 		CheckForWallRunning();
 	}
+	//Else...
 	else
 	{
+		//...set wallrunning, inaction, rightside and leftside to be false
+		//to turn off wall running
 		_isWallRunning = false;
 		inAction = false;
 		_rightSide = false;
 		_leftSide = false;
+		//Set the gravity scale and plane constraint back to normal
 		GetCharacterMovement()->GravityScale = 1.0f;
 		GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 	}
-		
+	
+	//If the forward velocity is less than 100 and the player is still wallrunning...
 	if (ForwardVelocity <= 100.0f && _isWallRunning)
 	{
+		//...turn off wallrunning by setting wallrunning, inaction, rightside and leftside to be false
 		_isWallRunning = false;
 		inAction = false;
 		_rightSide = false;
 		_leftSide = false;
+		//Set the gravity scale and plane constraint back to normal
 		GetCharacterMovement()->GravityScale = 50.0f;
 		GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 
 		//GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, 1.5f, false);
 	}
 	
-
-
-	/*if (!inAction)
-	{
-		_startPosition = GetActorLocation();
-		_direction = _endPosition - _startPosition;
-		_totalDistance = _direction.Size();
-		_direction = _direction.GetSafeNormal();
-	}
-	
-	if (inAction) {
-		if (_currentDistance < _totalDistance)
-		{
-			FVector newPosition = _startPosition;
-			newPosition += _direction * deltaTime * 150.0f;
-			SetActorLocation(newPosition);
-			_currentDistance = (newPosition - _startPosition).Size();
-		}
-	}*/
-
+	//Set the last frame height to be the current frame height
 	_lastFrameHeight = _currentFrameHeight;
 	
 }
@@ -147,13 +141,21 @@ void ATestComplexSystemCharacter::SetupPlayerInputComponent(class UInputComponen
 	PlayerInputComponent->BindAction("ResetVR", IE_Pressed, this, &ATestComplexSystemCharacter::OnResetVR);
 }
 
+/// <summary>
+/// Sets the players move speed
+/// </summary>
+/// <param name="speed">the speed to set the player to</param>
 void ATestComplexSystemCharacter::SetMoveSpeed(float speed)
 {
 	GetCharacterMovement()->MaxWalkSpeed = speed;
 }
 
+/// <summary>
+/// Start crouching functionality
+/// </summary>
 void ATestComplexSystemCharacter::StartCrouch()
 {
+	//if already sliding or already falling, return
 	if (isSliding || GetCharacterMovement()->IsFalling())
 		return;
 
@@ -162,129 +164,167 @@ void ATestComplexSystemCharacter::StartCrouch()
 	else
 		Crouch();*/
 
+	//Crouch and set iscrouching to true
 	Crouch();
 	isCrouching = true;
 }
 
+/// <summary>
+/// Stop crouching functionality
+/// </summary>
 void ATestComplexSystemCharacter::StopCrouch()
 {
+	//Uncrouch and set iscrouching to false
 	UnCrouch();
 	isCrouching = false;
 }
 
+/// <summary>
+/// Start sliding functionality
+/// </summary>
 void ATestComplexSystemCharacter::StartSlide()
 {
-	if (inAction)
+	//If already in action or sliding, return
+	if (inAction || isSliding)
 		return;
+	//Set in action and is sliding to be true
 	inAction = true;
-	if (isSliding)
-		return;
 	isSliding = true;
+
+	//Set the half heigh and get the new mesh location
 	GetCapsuleComponent()->SetCapsuleHalfHeight(48.0f);
 	FVector meshLocation = GetMesh()->GetComponentTransform().GetLocation();
 	meshLocation.Z += 50.0f;
 
+	//Set the new mesh location
 	GetMesh()->SetWorldLocation(meshLocation);
-
 }
 
+/// <summary>
+/// Stop sliding functionality
+/// </summary>
 void ATestComplexSystemCharacter::StopSlide()
 {
+	//Set in action and is sliding to be false
 	inAction = false;
 	isSliding = false;
+
+	//Set the half heigh and get the new mesh location
 	GetCapsuleComponent()->SetCapsuleHalfHeight(96.0f);
 	FVector meshLocation = GetMesh()->GetComponentTransform().GetLocation();
 	meshLocation.Z -= 50.0f;
 
+	//Set the new mesh location
 	GetMesh()->SetWorldLocation(meshLocation);
 }
 
+/// <summary>
+/// Checks if the player can climb the object it is facing
+/// </summary>
+/// <returns>true if the player can climb</returns>
 bool ATestComplexSystemCharacter::CheckForClimbing()
 {
+	//Hit result and collision params for use in line tracing
 	FHitResult out;
 	FCollisionQueryParams TraceParams;
+	//Ignores the player for line tracing
 	TraceParams.AddIgnoredActor(this);
 
+	//Get the actor location and forward
 	FVector actorLocation = GetActorLocation(); 
 	FVector actorForward = GetActorForwardVector();
 
+	//Sets the actor location and forward to what it needs to be to climb
 	actorLocation.Z -= 44.0f; 
 	actorForward = actorForward * 70.0f;
 
+	//Sets the start location and end location for line tracing
 	FVector startLocation = actorLocation; 
 	FVector endLocation = actorLocation + actorForward; 
 
+	//Line traces to the object to climb
 	bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 
+	//If the line trace hits nothing, return
 	if (!hasHit)
 		return false;
 
-	//GEngine->AddOnScreenDebugMessage(1, 5.0f, FColor::Blue, out.GetActor()->GetName());
-
+	//Gets the objects location and facing
 	_wallLocation = out.Location;
 	_wallNormal = out.Normal;
 
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+	//Creates a rotator from the wall normal and gets the forward vector from the wall
 	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
 	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
 
+	//Sets the start and end location for line tracing using the walls forward and location.
+	//line traces to get the height of the wall to see if the player can vault or climb that high
 	wallForward *= -10.0f;
 	startLocation = (wallForward + _wallLocation);
 	startLocation.Z += 200.0f;
 	endLocation = startLocation;
 	endLocation.Z -= 200.0f;
 	
+	//Line trace the wall
 	hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 	
+	//If the line trace hits nothing, return
 	if (!hasHit)
 		return false;
-
-	//GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
 	
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+	//Wall height is the out location of the line trace
 	_wallHeight = out.Location;
-
+	//Sets if the player should climb based off the height of the wall
 	_shouldPlayerClimb = _wallHeight.Z - _wallLocation.Z > 60.0f;
 
+	//Creates a rotator from the wall normal and gets the forward vector from the wall
 	rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
 	wallForward = UKismetMathLibrary::GetForwardVector(rotator);
 
+	//Sets the start and end location for line tracing using the walls forward and location.
+	//Line traces to get the thickness of the wall
 	wallForward *= -50.0f;
 	startLocation = (wallForward + _wallLocation);
 	startLocation.Z += 250.0f;
 	endLocation = startLocation;
 	endLocation.Z -= 300.0f;
 
+	//Line trace the wall to check the thickness 
 	hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 
+	//If the line trace hits nothing, the wall is not thick
 	if (!hasHit)
 		_isWallThick = false;
 
-	//GEngine->AddOnScreenDebugMessage(2, 5.0f, FColor::Blue, out.GetActor()->GetName());
-
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+	//The heigh of the other wall is the line traces hit location
 	_otherWallHeight = out.Location;
 
+	//Sets if the wall is too thick based off the width of the walls hit
 	_isWallThick = !(_wallHeight.Z - _otherWallHeight.Z > 30.0f);
 
 	return true;
 }
 
+/// <summary>
+/// Starts vaulting functionality
+/// </summary>
 void ATestComplexSystemCharacter::StartVaultOrGetUp()
 {
+	//If already in action, return then set in action  and is climbing to be true
 	if (inAction)
 		return;
 	inAction = true;
-
 	isClimbing = true;
 
+	//Set the player collision to be off and movement mode to be none
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-
-	
 }
 
 void ATestComplexSystemCharacter::StopVaultOrGetUp()
@@ -293,9 +333,6 @@ void ATestComplexSystemCharacter::StopVaultOrGetUp()
 	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
 	wallForward *= -50.0f;
 	FVector actorNewLocation = wallForward + GetActorLocation();
-
-
-
 
 	if (_isWallThick)
 	{
@@ -307,12 +344,10 @@ void ATestComplexSystemCharacter::StopVaultOrGetUp()
 	{
 		actorNewLocation += GetActorForwardVector() * 50.0f;
 		SetActorLocation(actorNewLocation);
-
 	}
 
 	_startPosition = GetActorLocation();
 	_endPosition = actorNewLocation;
-	
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
@@ -333,8 +368,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
-
-		
 
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
@@ -361,7 +394,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 				GetCharacterMovement()->GravityScale = 15.0f;
 				GetCharacterMovement()->Velocity = actorForward;
 				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
-				
 
 				_isWallRunning = true;
 			}	
@@ -388,8 +420,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
-
-		
 
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
@@ -430,7 +460,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 		}
 	}
-	
 }
 
 void ATestComplexSystemCharacter::CheckJump()
