@@ -43,6 +43,9 @@ public:
 	bool isClimbing = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool isCrouching = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
+	bool isVaulting = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool inAction = false;
 
 public:

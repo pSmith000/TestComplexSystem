@@ -302,7 +302,7 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 
 	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
-	//The heigh of the other wall is the line traces hit location
+	//The height of the other wall is the line traces hit location
 	_otherWallHeight = out.Location;
 
 	//Sets if the wall is too thick based off the width of the walls hit
@@ -317,43 +317,51 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 void ATestComplexSystemCharacter::StartVaultOrGetUp()
 {
 	//If already in action, return then set in action  and is climbing to be true
-	if (inAction)
+	if (inAction || isClimbing || isVaulting)
 		return;
 	inAction = true;
-	isClimbing = true;
 
 	//Set the player collision to be off and movement mode to be none
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
-}
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 
-void ATestComplexSystemCharacter::StopVaultOrGetUp()
-{
-	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
-	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
-	wallForward *= -50.0f;
-	FVector actorNewLocation = wallForward + GetActorLocation();
+	FVector actorNewLocation;
 
 	if (_isWallThick)
 	{
-		actorNewLocation.Z += 50.0f;
+		isClimbing = true;
+		FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
+		FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+		wallForward *= 50.0f;
+		actorNewLocation = wallForward + GetActorLocation();
 		SetActorLocation(actorNewLocation);
 	}
 
 	else
 	{
-		actorNewLocation += GetActorForwardVector() * 50.0f;
+		isVaulting = true;
+		actorNewLocation = GetActorLocation();
+		actorNewLocation.Z = _wallHeight.Z - 20.0f;
 		SetActorLocation(actorNewLocation);
+
 	}
 
 	_startPosition = GetActorLocation();
 	_endPosition = actorNewLocation;
+
+	GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::StopVaultOrGetUp, 1.0f, false);
+}
+
+void ATestComplexSystemCharacter::StopVaultOrGetUp()
+{
+	
 
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
 	inAction = false;
 	isClimbing = false;
+	isVaulting = false;
 }
 
 void ATestComplexSystemCharacter::CheckForWallRunning()
