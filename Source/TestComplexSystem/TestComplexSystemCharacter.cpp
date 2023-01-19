@@ -325,176 +325,259 @@ void ATestComplexSystemCharacter::StartVaultOrGetUp()
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Flying);
 
+	//Make a new vector for use in setting the actors location
 	FVector actorNewLocation;
 
+	//If the wall is too thick to vault over, then climb on top of the object
 	if (_isWallThick)
 	{
+		//Set climing to be true
 		isClimbing = true;
+		//Create a rotator from the walls normal and get the wall forward based off of that
 		FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
 		FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
+		//Set the wall forward back by 50
 		wallForward *= 50.0f;
+		//Set the new location to be where the player is plus the wall forward
+		//This is so the animation can play smoothly
 		actorNewLocation = wallForward + GetActorLocation();
 		SetActorLocation(actorNewLocation);
 	}
 
+	//If the wall is not too thick then the player can vault
 	else
 	{
+		//Set is vaulting to be true
 		isVaulting = true;
+		//Set the new location to be the players location
+		//And the height is equal to the wall height minus 20
+		//This si so the animation can play smoothly
 		actorNewLocation = GetActorLocation();
 		actorNewLocation.Z = _wallHeight.Z - 20.0f;
 		SetActorLocation(actorNewLocation);
 
 	}
 
-	_startPosition = GetActorLocation();
-	_endPosition = actorNewLocation;
-
+	//Set a timer so after the animation plays the collision, movement, and consequent booleans are set off
 	GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::StopVaultOrGetUp, 1.0f, false);
 }
 
+/// <summary>
+/// Stops vaulting functionality
+/// </summary>
 void ATestComplexSystemCharacter::StopVaultOrGetUp()
 {
-	
-
+	//Set the movement and collision back to normal
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 
+	//Set the booleans to be false since the action is done
 	inAction = false;
 	isClimbing = false;
 	isVaulting = false;
 }
 
+/// <summary>
+/// Checks for wall running and does the wall running functionality. Is 
+/// called in update and only called when the player is in the air and 
+/// falling downwards
+/// </summary>
 void ATestComplexSystemCharacter::CheckForWallRunning()
 {
+	//If the player is not on the left side of the wall
 	if (!_leftSide)
 	{
+
+		//Hit result and collision params for use in line tracing
 		FHitResult out;
 		FCollisionQueryParams TraceParams;
+		//Ignores the player for line tracing
+		TraceParams.AddIgnoredActor(this);
 
+		//Create a start location and end location for use in line tracing
+		//The start location is the actors location and the end location is to the right of the player
 		FVector startLocation = GetActorLocation();
 		FVector endLocation = (GetActorRightVector() * 50.0f) + startLocation;
 
+		//Line trace to the right
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
+			//If the wall is tagged not to wall run on, return
 			if (out.GetActor()->ActorHasTag("NoWallrun"))
 				return;
 
+			//Set right side and on right side to be true
 			_rightSide = true;
 			_onRightSide = true;
 
+			//If the player is not jumping off of the wall
 			if (!_isJumpingOffWall)
 			{
+				//Set in action to be true
 				inAction = true;
+
+				//Create a new rotator from the walls normal
 				FRotator newRotation = UKismetMathLibrary::MakeRotFromX(out.Normal);
+				//Set the rotation to be exactly 90 degrees
 				newRotation.Yaw += 90.0f;
 				newRotation.Roll = 0.0f;
 				newRotation.Pitch = 0.0f;
+				//Set the players rotation
 				SetActorRotation(newRotation);
 
+				//Get the actors forward
 				FVector actorForward = GetActorForwardVector();
+				//Set it to be straight ahead with no up or down movement
 				actorForward.X *= 500.0f;
 				actorForward.Y *= 500.0f;
 				actorForward.Z = 0.0f;
 
+				//Set the gravity scale to be higher than normal to slowly fall off the wall
+				//Set the velocity to be the actors forward
+				//Set the plane constraint to be 1 on the z to lock the player
 				GetCharacterMovement()->GravityScale = 15.0f;
 				GetCharacterMovement()->Velocity = actorForward;
 				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
 
+				//Set is wall running to be true
 				_isWallRunning = true;
 			}	
 		}
 
+		//If none of the if statements are true
 		else
 		{
+			//Set the booleans to be false
 			_isWallRunning = false;
 			inAction = false;
 			_rightSide = false;
+			//Set the gravity scale and plane constraints back to normal
 			GetCharacterMovement()->GravityScale = 1.0f;
 			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 		}
 	}
 
+	//If the player is not on the right side
 	if (!_rightSide)
 	{
+		//Hit result and collision params for use in line tracing
 		FHitResult out;
 		FCollisionQueryParams TraceParams;
+		//Ignores the player for line tracing
 		TraceParams.AddIgnoredActor(this);
 
+		//Create a start location and end location for use in line tracing
+		//The start location is the actors location and the end location is to the left of the player
 		FVector startLocation = GetActorLocation();
 		FVector endLocation = (GetActorRightVector() * -50.0f) + startLocation;
 
+		//Line trace to the left
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
 		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
+		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
+			//If the wall is tagged not to wall run on, return
 			if (out.GetActor()->ActorHasTag("NoWallrun"))
 				return;
 
+			//Set left side to be true and on right side to be false
 			_leftSide = true;
 			_onRightSide = false;
 
+			//If the player is not jumping off the wall
 			if (!_isJumpingOffWall)
 			{
+				//Set in action to be true
 				inAction = true;
+
+				//Create a new rotator from the walls normal
 				FRotator newRotation = UKismetMathLibrary::MakeRotFromX(out.Normal);
+				//Set the rotation to be exactly negative 90 degrees
 				newRotation.Yaw -= 90.0f;
 				newRotation.Roll = 0.0f;
 				newRotation.Pitch = 0.0f;
+				//Set the players rotation
 				SetActorRotation(newRotation);
 
+				//Get the actors forward
 				FVector actorForward = GetActorForwardVector();
+				//Set it to be straight ahead with no up or down movement
 				actorForward.X *= 500.0f;
 				actorForward.Y *= 500.0f;
 				actorForward.Z = 0.0f;
 
+				//Set the gravity scale to be higher than normal to slowly fall off the wall
+				//Set the velocity to be the actors forward
+				//Set the plane constraint to be 1 on the z to lock the player
 				GetCharacterMovement()->GravityScale = 15.0f;
 				GetCharacterMovement()->Velocity = actorForward;
 				GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 1.0f));
-			
+				
+				//Set is wallrunning to be true
 				_isWallRunning = true;
 			}
 		}
 
+		//If none of the if statements are true
 		else
 		{
+			//Set the booleans to be false
 			_isWallRunning = false;
 			inAction = false;
 			_leftSide = false;
+			//Set the gravity scale and plane constraints back to normal
 			GetCharacterMovement()->GravityScale = 1.0f;
 			GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 		}
 	}
 }
 
+/// <summary>
+/// Checks to jump to see if the player is jumping normally or jumping off a wall
+/// </summary>
 void ATestComplexSystemCharacter::CheckJump()
 {
+	//If the player is not on a wall and is on the ground, jump normally
 	if ((!(_rightSide || _leftSide)) && GetCharacterMovement()->IsMovingOnGround())
 		Jump();
+	//If the player is wall running
 	else if (_isWallRunning)
 	{
+		//Set is wall running to be false and is jumping off wall to be true
 		_isWallRunning = false;
 		_isJumpingOffWall = true;
 
+		//Get the right vector and select if the player launches to the right or the left
+		//based off if the player is on the right side of a wall or not
 		FVector actorRightVector = GetActorRightVector();
 		FVector launchVelocity = UKismetMathLibrary::SelectVector(actorRightVector * -450.0f, actorRightVector * 450.0f, _onRightSide);
 
+		//Set the launch velocity z to be higher
 		launchVelocity.Z = 450.0f;
 
+		//Launch the character using the launch velocity
 		LaunchCharacter(launchVelocity, false, false);
 
+		//Set a timer to call the turn off wall run function
 		GetWorldTimerManager().SetTimer(timerHandle, this, &ATestComplexSystemCharacter::TurnOffJumpOffWall, .5f, false);
 	}
 }
 
-
+/// <summary>
+/// Ends the wall running functionality
+/// </summary>
 void ATestComplexSystemCharacter::TurnOffJumpOffWall()
 {
+	//Set the booleans to be false
 	_isJumpingOffWall = false;
 	inAction = false;
+	//Set the gravity scale and plane constraints back to normal
 	GetCharacterMovement()->GravityScale = 1.0f;
 	GetCharacterMovement()->SetPlaneConstraintNormal(FVector(0.0f, 0.0f, 0.0f));
 }

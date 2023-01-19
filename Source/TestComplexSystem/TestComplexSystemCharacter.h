@@ -35,6 +35,8 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
 	float BaseLookUpRate;
 
+	//Booleans used for animations in the blueprint and to check if the player 
+	//is in a certain action or not
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Parkour)
 	bool isSprinting = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
@@ -49,9 +51,11 @@ public:
 	bool inAction = false;
 
 public:
-	//Variables used for checking for climbing
+	//Variable used for checking for climbing
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool _shouldPlayerClimb;
+
+	//Vartiables used for wall running
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool _isWallRunning;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
@@ -59,6 +63,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Parkour)
 	bool _rightSide;
 private:
+	//Variables used for climbing and or vaulting
 	bool _isWallThick;
 	bool _canClimb;
 	FVector _wallLocation;
@@ -66,15 +71,11 @@ private:
 	FVector _wallHeight;
 	FVector _otherWallHeight;
 
-	FVector _startPosition;
-	FVector _endPosition;
-	float _totalDistance;
-	float _currentDistance;
-	FVector _direction;
+	//Variables used for checking the height of the player frame by frame
 	float _lastFrameHeight;
 	float _currentFrameHeight;
 	
-	
+	//Variables used for wall running
 	bool _onRightSide;
 	bool _isJumpingOffWall;
 	bool _isJumping;
@@ -123,6 +124,7 @@ public:
 	/** Returns FollowCamera subobject **/
 	FORCEINLINE class UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
+	//These functions can be called in blueprint in case the user would like to change when they are used
 	UFUNCTION(BlueprintCallable, Category = "Parkour")
 	void SetMoveSpeed(float speed);
 
