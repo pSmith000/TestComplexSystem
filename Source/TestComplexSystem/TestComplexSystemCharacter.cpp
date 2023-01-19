@@ -387,6 +387,8 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
+			if (!out.GetActor())
+				return;
 			//If the wall is tagged not to wall run on, return
 			if (out.GetActor()->ActorHasTag("NoWallrun"))
 				return;
@@ -462,6 +464,8 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
 		{
+			if (!out.GetActor())
+				return;
 			//If the wall is tagged not to wall run on, return
 			if (out.GetActor()->ActorHasTag("NoWallrun"))
 				return;
