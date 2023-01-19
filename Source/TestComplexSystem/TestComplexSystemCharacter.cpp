@@ -57,15 +57,8 @@ ATestComplexSystemCharacter::ATestComplexSystemCharacter()
 /// <param name="deltaTime"></param>
 void ATestComplexSystemCharacter::Tick(float deltaTime)
 {
-	//DEBUG
-	FString deltaTimeString;
+	//Gets the forward velocity of the player
 	float ForwardVelocity = FVector::DotProduct(GetVelocity(), GetActorForwardVector());
-	if (ForwardVelocity <= 100.0f && _isWallRunning)
-		deltaTimeString = "True";
-	else
-		deltaTimeString = "RFalse";
-	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, deltaTimeString);
-	//DEBUG
 
 	//Sets the current height of the player for wall running
 	_currentFrameHeight = GetActorLocation().Z;
@@ -159,11 +152,6 @@ void ATestComplexSystemCharacter::StartCrouch()
 	if (isSliding || GetCharacterMovement()->IsFalling())
 		return;
 
-	/*if (GetCharacterMovement()->Velocity.Size() >= 400.0f && !GetCharacterMovement()->IsFalling())
-		StartSlide();
-	else
-		Crouch();*/
-
 	//Crouch and set iscrouching to true
 	Crouch();
 	isCrouching = true;
@@ -253,8 +241,6 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 	_wallLocation = out.Location;
 	_wallNormal = out.Normal;
 
-	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
-
 	//Creates a rotator from the wall normal and gets the forward vector from the wall
 	FRotator rotator = UKismetMathLibrary::MakeRotFromX(_wallNormal);
 	FVector wallForward = UKismetMathLibrary::GetForwardVector(rotator);
@@ -273,8 +259,6 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 	//If the line trace hits nothing, return
 	if (!hasHit)
 		return false;
-	
-	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
 	//Wall height is the out location of the line trace
 	_wallHeight = out.Location;
@@ -299,8 +283,6 @@ bool ATestComplexSystemCharacter::CheckForClimbing()
 	//If the line trace hits nothing, the wall is not thick
 	if (!hasHit)
 		_isWallThick = false;
-
-	DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
 	//The height of the other wall is the line traces hit location
 	_otherWallHeight = out.Location;
@@ -401,7 +383,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 
 		//Line trace to the right
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
-		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
 		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
@@ -477,7 +458,6 @@ void ATestComplexSystemCharacter::CheckForWallRunning()
 
 		//Line trace to the left
 		bool hasHit = GetWorld()->LineTraceSingleByChannel(out, startLocation, endLocation, ECC_Visibility, TraceParams);
-		DrawDebugLine(GetWorld(), startLocation, endLocation, FColor::Red, false, 2.0f);
 
 		//If the line trace has hit a wall, and the player is falling downwards, and the player is on the ground
 		if (hasHit && _currentFrameHeight - _lastFrameHeight <= 0.0f && !GetCharacterMovement()->IsMovingOnGround())
